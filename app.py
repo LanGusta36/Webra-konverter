@@ -1,15 +1,15 @@
 import streamlit as st
 import mammoth
 
-st.set_page_config(page_title="Webra Okos Konvertáló", page_icon="🎓")
+st.set_page_config(page_title="Webra Konvertáló", page_icon="🎓")
 
-st.title("🎓 Webra Mind-az-egyben Konvertáló")
-st.write("Töltsd fel az egyetlen Word fájlt, amiben egy vízszintes vonallal választottad el a bevezetőt a törzstől.")
+st.title("🎓 Webra Okos Konvertáló")
+st.write("Használd a `[TÖRZS]` kulcsszót a Wordben a bevezető és a cikktörzs elválasztásához!")
 
-uploaded_file = st.file_uploader("Válaszd ki a .docx fájlt", type="docx")
+uploaded_file = st.file_uploader("Töltsd fel a .docx fájlt", type="docx")
 
 if uploaded_file is not None:
-    # Stílusok beállítása (Címsorok -> h3)
+    # Formázási szabályok: Címsorok -> h3
     style_map = """
     p[style-name='Heading 1'] => h3:fresh
     p[style-name='Heading 2'] => h3:fresh
@@ -18,34 +18,42 @@ if uploaded_file is not None:
     p[style-name='Title'] => h3:fresh
     """
     
-    # Teljes konvertálás
+    # Konvertálás HTML-lé
     result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
     full_html = result.value
 
-    # SZÉTVÁLASZTÁS A VONAL MENTÉN
-    # A Mammoth a vízszintes vonalat <hr /> taggé alakítja
-    if "<hr />" in full_html:
-        parts = full_html.split("<hr />", 1)
+    # SZÉTVÁLASZTÁS A KULCSSZÓ MENTÉN
+    # A Mammoth valószínűleg <p>[TÖRZS]</p> formában fogja látni
+    marker = "[TÖRZS]"
+    
+    if marker in full_html:
+        # Kettévágjuk a szöveget a marker mentén
+        # Megpróbáljuk elkapni a <p> taggel együtt is, ha a Mammoth belerakta
+        if f"<p>{marker}</p>" in full_html:
+            parts = full_html.split(f"<p>{marker}</p>", 1)
+        else:
+            parts = full_html.split(marker, 1)
+            
         intro_html = parts[0].strip()
         body_html = parts[1].strip()
         
-        st.success("Sikeresen szétválasztva!")
+        st.success("Sikeresen szétválasztva a kulcsszó alapján!")
         
+        # KIMENETEK
         st.subheader("Másolható kódok")
 
-        # 1. Doboz: Bevezető
-        st.write("**1. Bevezető mezőbe (HTML nézetbe):**")
+        st.write("**1. Bevezető mezőbe:**")
         st.code(intro_html, language="html")
 
-        # 2. Doboz: Cikktörzs
-        st.write("**2. Cikktörzs mezőbe (HTML nézetbe):**")
+        st.write("**2. Cikktörzs mezőbe:**")
         st.code(body_html, language="html")
         
     else:
-        # Ha nem talál vonalat, mindent a törzsbe tesz, és figyelmeztet
-        st.warning("Nem találtam vízszintes elválasztó vonalat a Wordben! Itt a teljes szöveg egyben:")
-        st.write("**Cikktörzs (teljes):**")
-        st.code(full_html, language="html")
+        st.error(f"Hiba: Nem találom a `{marker}` kulcsszót a dokumentumban!")
+        st.info("Kérlek, írd be a Wordbe a bevezető után egy külön sorba: [TÖRZS]")
+        
+        with st.expander("Nézd meg a generált teljes kódot"):
+            st.code(full_html, language="html")
 
 else:
-    st.info("Húzz egy vízszintes vonalat a Wordben a bevezető után, majd töltsd fel ide!")
+    st.info("Töltsd fel a Word fájlt a kezdéshez!")
