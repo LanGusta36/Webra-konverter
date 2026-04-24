@@ -4,7 +4,7 @@ import mammoth
 st.set_page_config(page_title="Webra Formázó v2", page_icon="🎓")
 
 st.title("🎓 Webra Cikk Formázó")
-st.write("Ez a verzió a Word stílusok alapján (Címsor 1, 2, 3) generál HTML-t.")
+st.write("Ez a verzió a Word stílusok alapján generál HTML-t.")
 
 # 1. MEZŐ: Cikk címe (Sima szöveg)
 title_input = st.text_input("1. Cikk címe", placeholder="Másold ide a címet a Wordből...")
@@ -16,7 +16,7 @@ st.divider()
 
 # 3. MEZŐ: Cikktörzs (Fájlfeltöltés a formázás megőrzése miatt)
 st.subheader("3. Cikktörzs generálása")
-st.info("Töltsd fel a Word fájlt, hogy a program felismerje a címsorokat!")
+st.info("Töltsd fel a Word fájlt, csak a cikktörzs tartalmával")
 uploaded_file = st.file_uploader("Válaszd ki a .docx fájlt", type="docx")
 
 if uploaded_file is not None:
