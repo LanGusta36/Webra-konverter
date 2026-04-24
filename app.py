@@ -1,67 +1,52 @@
 import streamlit as st
+import mammoth
 
-st.set_page_config(page_title="Webra Szöveg Formázó", page_icon="📝")
+st.set_page_config(page_title="Webra Formázó v2", page_icon="🎓")
 
-st.title("📝 Webra Szöveg Formázó")
-st.write("Másold be a szövegeket a megfelelő helyre, és az app legenerálja a Webra-kompatibilis kódokat.")
+st.title("🎓 Webra Cikk Formázó")
+st.write("Ez a verzió a Word stílusok alapján (Címsor 1, 2, 3) generál HTML-t.")
 
-# --- BEVITEL ---
-title_input = st.text_input("1. Cikk címe", placeholder="Ide másold a főcímet...")
+# 1. MEZŐ: Cikk címe (Sima szöveg)
+title_input = st.text_input("1. Cikk címe", placeholder="Másold ide a címet a Wordből...")
 
-intro_input = st.text_area("2. Bevezető (Alcím)", placeholder="Ide másold a rövid bevezető szöveget...", height=100)
-
-body_input = st.text_area("3. Cikktörzs szövege", 
-    placeholder="Ide jöhet a cikk teljes szövege. A címsorokat hagyd meg külön sorban!", 
-    height=300)
+# 2. MEZŐ: Bevezető (Alcím)
+intro_input = st.text_area("2. Bevezető (Alcím) - Ez <p> tagbe kerül", placeholder="Ide jön a rövid bevezető...", height=100)
 
 st.divider()
 
-# --- FELDOLGOZÁS ---
+# 3. MEZŐ: Cikktörzs (Fájlfeltöltés a formázás megőrzése miatt)
+st.subheader("3. Cikktörzs generálása")
+st.info("Töltsd fel a Word fájlt, hogy a program felismerje a címsorokat!")
+uploaded_file = st.file_uploader("Válaszd ki a .docx fájlt", type="docx")
 
-def clean_body_conversion(text):
-    if not text:
-        return ""
+if uploaded_file is not None:
+    # Itt mondjuk meg, hogy minden Word címsorból (H1, H2, H3) legyen <h3>
+    style_map = """
+    p[style-name='Heading 1'] => h3:fresh
+    p[style-name='Heading 2'] => h3:fresh
+    p[style-name='Heading 3'] => h3:fresh
+    p[style-name='Heading 4'] => h3:fresh
+    p[style-name='Title'] => h3:fresh
+    """
     
-    lines = text.split('\n')
-    html_output = []
+    # Konvertálás (képek nélkül)
+    result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
+    body_html = result.value
+
+    # Megjelenítés
+    st.success("HTML generálva!")
     
-    for line in lines:
-        clean_line = line.strip()
-        if not clean_line:
-            continue
-        
-        # Logika: Ha a sor kérdőjellel végződik vagy viszonylag rövid, legyen H3
-        # Ezt bármikor módosíthatjuk, ha más szabályt szeretnél
-        if clean_line.endswith('?') or len(clean_line) < 60:
-            html_output.append(f"<h3>{clean_line}</h3>")
-        else:
-            html_output.append(f"<p>{clean_line}</p>")
-            
-    return "\n".join(html_output)
-
-# --- MEGJELENÍTÉS / KIMENET ---
-
-if title_input or intro_input or body_input:
-    st.subheader("Másolható kódok")
-
-    # CÍM
-    st.write("**Cikk címe (Csak szöveg):**")
+    # Kimenetek
+    st.write("### Másolható kódok a Webrához:")
+    
+    st.write("**Cikk címe:**")
     st.code(title_input)
 
-    # BEVEZETŐ
-    if intro_input:
-        st.write("**Bevezető mező:**")
-        st.code(f"<p>{intro_input}</p>", language="html")
+    st.write("**Bevezető mezőbe:**")
+    st.code(f"<p>{intro_input}</p>", language="html")
 
-    # CIKKTÖRZS
-    if body_input:
-        st.write("**Cikktörzs mező:**")
-        body_html = clean_body_conversion(body_input)
-        st.code(body_html, language="html")
-
-    st.success("Tipp: Kattints a kódblokkok jobb felső sarkában lévő ikonra a másoláshoz!")
+    st.write("**Cikktörzs mezőbe:**")
+    st.code(body_html, language="html")
+    
 else:
-    st.info("Várom a szövegeket...")
-
-# A requirements.txt-ből most már ki is veheted a 'mammoth' sort, 
-# de ha benne marad, az sem okoz hibát.
+    st.warning("A cikktörzs generálásához töltsd fel a Word fájlt!")
