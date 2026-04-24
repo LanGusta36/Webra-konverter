@@ -1,76 +1,67 @@
 import streamlit as st
-import mammoth
-import io
-from datetime import datetime
 
-st.set_page_config(page_title="Webra Publikáló Segéd", page_icon="🎓")
+st.set_page_config(page_title="Webra Szöveg Formázó", page_icon="📝")
 
-# --- SEGÉDFÜGGVÉNYEK ---
-def get_webra_path():
-    now = datetime.now()
-    # Példa: site/upload/2026/04/
-    return f"site/upload/{now.year}/{now.strftime('%m')}/"
+st.title("📝 Webra Szöveg Formázó")
+st.write("Másold be a szövegeket a megfelelő helyre, és az app legenerálja a Webra-kompatibilis kódokat.")
 
-def generate_img_tag(filename, is_cover=True):
-    path = get_webra_path()
-    if is_cover:
-        # A te példád alapján a borítókép kódja
-        return f'<img id="img_gen_{datetime.now().strftime("%S%f")}" name="{path}{filename}" src="{path}{filename}" alt="{filename}" title="{filename}" width="900" height="506" style=""/>'
-    else:
-        # Cikktörzsbe szánt középre zárt kép
-        return f'<p><img id="img_gen_{datetime.now().strftime("%S%f")}" name="{path}{filename}" src="{path}{filename}" alt="{filename}" title="{filename}" width="450" height="330" style="display: block; margin-left: auto; margin-right: auto;"/></p>'
+# --- BEVITEL ---
+title_input = st.text_input("1. Cikk címe", placeholder="Ide másold a főcímet...")
 
-# --- UI ---
-st.title("🎓 SZTE Alma Mater - Webra Formázó")
+intro_input = st.text_area("2. Bevezető (Alcím)", placeholder="Ide másold a rövid bevezető szöveget...", height=100)
 
-col1, col2 = st.columns(2)
-
-with col1:
-    title = st.text_input("1. Cikk címe (Főcím)", placeholder="Másold ide a címet...")
-    intro = st.text_area("2. Bevezető (Alcím)", placeholder="Ide jön a rövid kedvcsináló...")
-
-with col2:
-    cover_name = st.text_input("3. Borítókép fájlneve", placeholder="pl. boritokep.jpg")
-    st.info(f"Várható útvonal: {get_webra_path()}")
+body_input = st.text_area("3. Cikktörzs szövege", 
+    placeholder="Ide jöhet a cikk teljes szövege. A címsorokat hagyd meg külön sorban!", 
+    height=300)
 
 st.divider()
 
-uploaded_file = st.file_uploader("4. Cikktörzs feltöltése (Word dokumentum)", type="docx")
+# --- FELDOLGOZÁS ---
 
-if st.button("HTML Kódok Generálása") or uploaded_file:
-    if uploaded_file:
-        # Cikktörzs konvertálása
-        style_map = """
-        p[style-name='Heading 1'] => h3:fresh
-        p[style-name='Heading 2'] => h3:fresh
-        p[style-name='Heading 3'] => h3:fresh
-        """
-        result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
-        body_html = result.value
+def clean_body_conversion(text):
+    if not text:
+        return ""
+    
+    lines = text.split('\n')
+    html_output = []
+    
+    for line in lines:
+        clean_line = line.strip()
+        if not clean_line:
+            continue
         
-        # Eredmények megjelenítése boxokban
-        st.subheader("Másold ki a kódokat a Webrába:")
+        # Logika: Ha a sor kérdőjellel végződik vagy viszonylag rövid, legyen H3
+        # Ezt bármikor módosíthatjuk, ha más szabályt szeretnél
+        if clean_line.endswith('?') or len(clean_line) < 60:
+            html_output.append(f"<h3>{clean_line}</h3>")
+        else:
+            html_output.append(f"<p>{clean_line}</p>")
+            
+    return "\n".join(html_output)
 
-        # CÍM (Sima szöveg, de legyen meg)
-        st.write("**Cikk címe:**")
-        st.code(title)
+# --- MEGJELENÍTÉS / KIMENET ---
 
-        # BEVEZETŐ
-        st.write("**Bevezető mezőbe:**")
-        st.code(f"<p>{intro}</p>")
+if title_input or intro_input or body_input:
+    st.subheader("Másolható kódok")
 
-        # KÉP (Rövid bevezető mező)
-        if cover_name:
-            st.write("**Rövid bevezetőhöz (Kép kód):**")
-            st.code(generate_img_tag(cover_name, is_cover=True))
+    # CÍM
+    st.write("**Cikk címe (Csak szöveg):**")
+    st.code(title_input)
 
-        # CIKKTÖRZS
-        st.write("**Cikktörzs mezőbe:**")
+    # BEVEZETŐ
+    if intro_input:
+        st.write("**Bevezető mező:**")
+        st.code(f"<p>{intro_input}</p>", language="html")
+
+    # CIKKTÖRZS
+    if body_input:
+        st.write("**Cikktörzs mező:**")
+        body_html = clean_body_conversion(body_input)
         st.code(body_html, language="html")
 
-        # EXTRA: Kép beszúró segéd a cikktörzshöz
-        st.divider()
-        st.subheader("Képkód generátor a cikktörzshöz")
-        extra_img = st.text_input("Belső kép fájlneve (ha van)", key="inner_img")
-        if extra_img:
-            st.code(generate_img_tag(extra_img, is_cover=False))
+    st.success("Tipp: Kattints a kódblokkok jobb felső sarkában lévő ikonra a másoláshoz!")
+else:
+    st.info("Várom a szövegeket...")
+
+# A requirements.txt-ből most már ki is veheted a 'mammoth' sort, 
+# de ha benne marad, az sem okoz hibát.
