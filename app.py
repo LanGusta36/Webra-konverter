@@ -1,52 +1,47 @@
 import streamlit as st
 import mammoth
 
-st.set_page_config(page_title="Webra Formázó v2", page_icon="🎓")
+st.set_page_config(page_title="Webra Formázó", page_icon="🎓")
 
-st.title("🎓 Webra Cikk Formázó")
-st.write("Ez a verzió a Word stílusok alapján generál HTML-t.")
+st.title("🎓 Webra Tartalom Formázó")
+st.write("Csak a kódolást igénylő mezőkhöz:")
 
-# 1. MEZŐ: Cikk címe (Sima szöveg)
-title_input = st.text_input("1. Cikk címe", placeholder="Másold ide a címet a Wordből...")
-
-# 2. MEZŐ: Bevezető (Alcím)
-intro_input = st.text_area("2. Bevezető (Alcím) - Ez <p> tagbe kerül", placeholder="Ide jön a rövid bevezető...", height=100)
+# 1. MEZŐ: Bevezető (Alcím)
+intro_input = st.text_area("1. Bevezető (Alcím) szövege", 
+    placeholder="Ide másold a bevezetőt a Wordből...", 
+    height=100)
 
 st.divider()
 
-# 3. MEZŐ: Cikktörzs (Fájlfeltöltés a formázás megőrzése miatt)
-st.subheader("3. Cikktörzs generálása")
-st.info("Töltsd fel a Word fájlt, csak a cikktörzs tartalmával")
-uploaded_file = st.file_uploader("Válaszd ki a .docx fájlt", type="docx")
+# 2. MEZŐ: Cikktörzs (Fájlfeltöltés)
+st.subheader("2. Cikktörzs generálása Wordből")
+uploaded_file = st.file_uploader("Töltsd fel a .docx fájlt", type="docx")
 
-if uploaded_file is not None:
-    # Itt mondjuk meg, hogy minden Word címsorból (H1, H2, H3) legyen <h3>
-    style_map = """
-    p[style-name='Heading 1'] => h3:fresh
-    p[style-name='Heading 2'] => h3:fresh
-    p[style-name='Heading 3'] => h3:fresh
-    p[style-name='Heading 4'] => h3:fresh
-    p[style-name='Title'] => h3:fresh
-    """
-    
-    # Konvertálás (képek nélkül)
-    result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
-    body_html = result.value
+if intro_input or uploaded_file:
+    st.subheader("Másolható HTML kódok")
 
-    # Megjelenítés
-    st.success("HTML generálva!")
-    
-    # Kimenetek
-    st.write("### Másolható kódok a Webrához:")
-    
-    st.write("**Cikk címe:**")
-    st.code(title_input)
+    # BEVEZETŐ KIMENET
+    if intro_input:
+        st.write("**Bevezető mezőbe:**")
+        # Automatikusan körberakjuk <p> taggel a Webra miatt
+        st.code(f"<p>{intro_input}</p>", language="html")
 
-    st.write("**Bevezető mezőbe:**")
-    st.code(f"<p>{intro_input}</p>", language="html")
+    # CIKKTÖRZS KIMENET
+    if uploaded_file:
+        # A Word címsorokat (Heading 1-4) h3-ra alakítjuk
+        style_map = """
+        p[style-name='Heading 1'] => h3:fresh
+        p[style-name='Heading 2'] => h3:fresh
+        p[style-name='Heading 3'] => h3:fresh
+        p[style-name='Heading 4'] => h3:fresh
+        p[style-name='Title'] => h3:fresh
+        """
+        
+        result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
+        body_html = result.value
 
-    st.write("**Cikktörzs mezőbe:**")
-    st.code(body_html, language="html")
-    
+        st.write("**Cikktörzs mezőbe:**")
+        st.code(body_html, language="html")
+        st.success("Kész! Csak másold ki a kódot.")
 else:
-    st.warning("A cikktörzs generálásához töltsd fel a Word fájlt!")
+    st.info("Várom a bevezetőt vagy a Word fájlt...")
