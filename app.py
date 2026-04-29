@@ -6,8 +6,7 @@ import re
 
 st.set_page_config(page_title="Webra Konvertáló Pro", page_icon="🎓")
 
-st.title("🎓 Webra Okos Konvertáló (Vers-barát verzió)")
-st.write("Ez a verzió már megőrzi a tabulátorokat és a behúzásokat is.")
+st.title("🎓 Webra Okos Konvertáló")
 
 uploaded_file = st.file_uploader("Töltsd fel a Word fájlt (.doc vagy .docx)", type=["doc", "docx"])
 
