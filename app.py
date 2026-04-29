@@ -4,7 +4,7 @@ import pypandoc
 import os
 import re
 
-st.set_page_config(page_title="Webra Konvertáló", page_icon="🎓")
+st.set_page_config(page_title="Webra Konvertáló Pro", page_icon="🎓")
 
 st.title("🎓 Webra Okos Konvertáló")
 
@@ -16,36 +16,45 @@ if uploaded_file is not None:
     
     html_content = ""
 
-    if extension == "docx":
-        # Mammoth konvertálás
-        style_map = "p[style-name='Heading 1'] => h3:fresh \n p[style-name='Heading 2'] => h3:fresh \n p[style-name='Heading 3'] => h3:fresh"
-        result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
-        html_content = result.value
-    else:
-        with st.spinner("Régi .doc feldolgozása..."):
-            with open("temp.doc", "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            html_content = pypandoc.convert_file("temp.doc", 'html5')
-            os.remove("temp.doc")
+    # Ideiglenes mentés a Pandoc számára
+    temp_filename = f"temp.{extension}"
+    with open(temp_filename, "wb") as f:
+        f.write(uploaded_file.getbuffer())
 
-    # --- SPECIÁLIS FORMÁZÁS JAVÍTÁSA (TABULÁTOROK FIXÁLÁSA) ---
-    
-    # 1. A tabulátorokat 4 kemény szóközre cseréljük
-    html_content = html_content.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;")
-    
-    # 2. A sor eleji és egymás melletti szóközök "keményítése"
-    # Regex: Csak a tageken ( < > ) kívüli szóközöket bántjuk
-    def hard_space_fix(text):
-        # Minden két vagy több szóközt kicserélünk kemény szóközökre
-        text = re.sub(r' {2,}', lambda m: "&nbsp;" * len(m.group(0)), text)
-        # A bekezdések elején lévő szóközöket is keményítjük (ha maradt ilyen)
-        text = text.replace("> ", ">&nbsp;")
-        return text
+    try:
+        with st.spinner("Dokumentum elemzése..."):
+            # A Pandoc-ot használjuk mindenre, mert az jobban kezeli a margókat
+            # 'html5' formátum, de stílusok nélkül, hogy ne legyen 'szemetes'
+            html_content = pypandoc.convert_file(temp_filename, 'html5', extra_args=['--body-only'])
+            os.remove(temp_filename)
+    except Exception as e:
+        st.error(f"Hiba a konvertálás során: {e}")
+        # Tartalék megoldás Mammoth-szal, ha a Pandoc elakadna
+        if extension == "docx":
+            result = mammoth.convert_to_html(uploaded_file)
+            html_content = result.value
 
-    html_content = hard_space_fix(html_content)
+    # --- SPECIÁLIS VERS-FORMÁZÓ LOGIKA ---
     
-    # 3. Biztonsági tartalék: white-space stílus (ha a Webra mégis átengedné)
-    html_content = html_content.replace("<p>", '<p style="white-space: pre-wrap; margin-bottom: 0.5em;">')
+    def fix_indentation(html):
+        # 1. Keressük meg a tabulátorokat és alakítsuk át fix pixel alapú behúzássá
+        # Egy tabulátor kb. 40px behúzásnak felel meg
+        html = html.replace("\t", '<span style="display:inline-block; width:40px;"></span>')
+        
+        # 2. Ha sor eleji szóközöket találunk, alakítsuk át padding-re
+        lines = html.split('\n')
+        fixed_lines = []
+        for line in lines:
+            if line.startswith('<p> '):
+                # Megszámoljuk a sor eleji szóközöket
+                spaces = len(line) - len(line.lstrip('<p> '))
+                padding = spaces * 10 # 1 szóköz kb 10px
+                line = line.replace('<p>', f'<p style="padding-left: {padding}px; margin-bottom: 0;">')
+            fixed_lines.append(line)
+        
+        return "\n".join(fixed_lines)
+
+    html_content = fix_indentation(html_content)
 
     # SZÉTVÁLASZTÁS [TÖRZS] ALAPJÁN
     marker = "[TÖRZS]"
@@ -55,12 +64,11 @@ if uploaded_file is not None:
         intro_html = parts[0].strip()
         body_html = parts[1].strip()
         
-        # Tisztítás a vágás után
-        if intro_html.endswith('<p style="white-space: pre-wrap; margin-bottom: 0.5em;">'): 
-            intro_html = intro_html.rsplit('<p', 1)[0]
+        # Tisztítás a kódvégeknél
+        if intro_html.endswith('<p>'): intro_html = intro_html.rsplit('<p', 1)[0]
         if body_html.startswith("</p>"): body_html = body_html[4:]
 
-        st.success("Feldolgozva! A behúzások most már 'kőbe vannak vésve'.")
+        st.success("Feldolgozva! Próbáld meg ezt beilleszteni a forráskódba.")
         
         st.write("**1. Bevezető mezőbe:**")
         st.code(intro_html, language="html")
