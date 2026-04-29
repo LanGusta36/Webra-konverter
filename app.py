@@ -4,10 +4,9 @@ import pypandoc
 import os
 import re
 
-st.set_page_config(page_title="Webra Konvertáló Pro", page_icon="🎓")
+st.set_page_config(page_title="Webra Konvertáló", page_icon="🎓")
 
 st.title("🎓 Webra Okos Konvertáló")
-st.write("Ez a verzió már megőrzi a tabulátorokat és a behúzásokat is.")
 
 uploaded_file = st.file_uploader("Töltsd fel a Word fájlt (.doc vagy .docx)", type=["doc", "docx"])
 
@@ -18,7 +17,7 @@ if uploaded_file is not None:
     html_content = ""
 
     if extension == "docx":
-        # Mammoth-szal kezdünk, de megkérjük, hogy ne törölje az üres részeket
+        # Mammoth konvertálás
         style_map = "p[style-name='Heading 1'] => h3:fresh \n p[style-name='Heading 2'] => h3:fresh \n p[style-name='Heading 3'] => h3:fresh"
         result = mammoth.convert_to_html(uploaded_file, style_map=style_map)
         html_content = result.value
@@ -29,12 +28,23 @@ if uploaded_file is not None:
             html_content = pypandoc.convert_file("temp.doc", 'html5')
             os.remove("temp.doc")
 
-    # --- SPECIÁLIS FORMÁZÁS JAVÍTÁSA (VERSHEZ) ---
-    # 1. Tabulátorok cseréje szóközökre (hogy a web is lássa)
+    # --- SPECIÁLIS FORMÁZÁS JAVÍTÁSA (TABULÁTOROK FIXÁLÁSA) ---
+    
+    # 1. A tabulátorokat 4 kemény szóközre cseréljük
     html_content = html_content.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;")
     
-    # 2. CSS hozzáadása a bekezdésekhez, hogy tisztelje a szóközöket
-    # Ezzel a trükkel a Webra kénytelen lesz megjeleníteni a behúzásokat
+    # 2. A sor eleji és egymás melletti szóközök "keményítése"
+    # Regex: Csak a tageken ( < > ) kívüli szóközöket bántjuk
+    def hard_space_fix(text):
+        # Minden két vagy több szóközt kicserélünk kemény szóközökre
+        text = re.sub(r' {2,}', lambda m: "&nbsp;" * len(m.group(0)), text)
+        # A bekezdések elején lévő szóközöket is keményítjük (ha maradt ilyen)
+        text = text.replace("> ", ">&nbsp;")
+        return text
+
+    html_content = hard_space_fix(html_content)
+    
+    # 3. Biztonsági tartalék: white-space stílus (ha a Webra mégis átengedné)
     html_content = html_content.replace("<p>", '<p style="white-space: pre-wrap; margin-bottom: 0.5em;">')
 
     # SZÉTVÁLASZTÁS [TÖRZS] ALAPJÁN
@@ -50,7 +60,7 @@ if uploaded_file is not None:
             intro_html = intro_html.rsplit('<p', 1)[0]
         if body_html.startswith("</p>"): body_html = body_html[4:]
 
-        st.success("Feldolgozva! A behúzások megmaradtak.")
+        st.success("Feldolgozva! A behúzások most már 'kőbe vannak vésve'.")
         
         st.write("**1. Bevezető mezőbe:**")
         st.code(intro_html, language="html")
